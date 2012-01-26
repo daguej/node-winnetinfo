@@ -1,6 +1,6 @@
 Node NetInfo addon
 ==================
-This addon for Node.js allows you to get the system's DNS configuration under Windows.
+This addon for Node.js allows you to get the system's DNS configuration under Windows.  [Download a compiled binary here](https://github.com/downloads/daguej/node-winnetinfo/NodeWinNetInfo.node) if you're in a hurry (and taking candy from strangers is your thing).
 
 Usage
 =====
