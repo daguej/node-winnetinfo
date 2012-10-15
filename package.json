@@ -1,0 +1,20 @@
+{
+  "name": "winnetinfo",
+  "version": "1.0.0",
+  "description": "Allows Node to get Windows' DNS configuration",
+  "os": ["win32"],
+  "main": "NodeWinNetInfo.node",
+  "scripts": {
+    "preinstall": "node-gyp rebuild"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/daguej/node-winnetinfo.git"
+  },
+  "keywords": [
+    "dns",
+    "windows"
+  ],
+  "author": "daguej",
+  "license": "BSD"
+}
