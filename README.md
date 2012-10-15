@@ -2,11 +2,20 @@ Node NetInfo addon
 ==================
 This addon for Node.js allows you to get the system's DNS configuration under Windows.
 
+It doesn't work on *nix, where you can simply read `/etc/resolv.conf` to get the system's DNS servers.
+
+Installation
+============
+This project is available on npm.  Since it is a native (C++) addon, you'll need [everything node-gyp needs](https://github.com/TooTallNate/node-gyp#installation) to build projects, which includes Python 2.7 and MS VC++.
+
+    > npm install winnetinfo
+
+Alternatively, you can [download a compiled binary here](https://github.com/downloads/daguej/node-winnetinfo/NodeWinNetInfo.node) if you're in a hurry (and taking candy from strangers is your thing).
+
 Usage
 =====
-1. Drop the NodeWinNetInfo.node file (actually a DLL) into your app directory.
-2. `var ni = require('./NodeWinNetInfo');`
-3. `ni.getNetworkParams();`
+1. `var ni = require('winnetinfo');`
+2. `ni.getNetworkParams();`
 
 You'll get something like this:
 
