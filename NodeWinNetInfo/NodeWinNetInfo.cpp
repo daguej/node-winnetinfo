@@ -1,17 +1,10 @@
 // NodeWinNetInfo.cpp : Defines the exported functions for the DLL application.
 //
 
-#include "stdafx.h"
-
-#include <v8.h>
-using namespace v8;
-#pragma comment(lib, "node")
-#include <node.h>
-
+#include <nan.h>
 
 #include <WinSock2.h>
 #include <IPHlpApi.h>
-#include <stdio.h>
 #include <Windows.h>
 #pragma comment(lib, "IPHLPAPI.lib")
 
@@ -21,9 +14,9 @@ using namespace v8;
 
 
 namespace WinNetInfo {
-	void Get(const FunctionCallbackInfo<Value>& args) {
-		Isolate* isolate = args.GetIsolate();
+	using namespace v8;
 
+	void Get(const Nan::FunctionCallbackInfo<Value>& info) {
 		FIXED_INFO *pFixedInfo;
 		ULONG ulOutBufLen;
 		DWORD dwRetVal;
@@ -31,8 +24,8 @@ namespace WinNetInfo {
 
 		pFixedInfo = (FIXED_INFO *) MALLOC(sizeof (FIXED_INFO));
 		if (pFixedInfo == NULL) {
-			isolate->ThrowException(Exception::Error(String::NewFromUtf8(isolate, "Error allocating memory")));
-			args.GetReturnValue().Set(Undefined(isolate));
+			Nan::ThrowError("Error allocating memory");
+			info.GetReturnValue().Set(Nan::Undefined());
 			return;
 		}
 		ulOutBufLen = sizeof (FIXED_INFO);
@@ -43,58 +36,59 @@ namespace WinNetInfo {
 			FREE(pFixedInfo);
 			pFixedInfo = (FIXED_INFO *) MALLOC(ulOutBufLen);
 			if (pFixedInfo == NULL) {
-				isolate->ThrowException(Exception::Error(String::NewFromUtf8(isolate, "Error allocating memory")));
-				args.GetReturnValue().Set(Undefined(isolate));
+				Nan::ThrowError("Error allocating memory");
+				info.GetReturnValue().Set(Nan::Undefined());
 				return;
 			}
 		}
 
 		
 		if (dwRetVal = GetNetworkParams(pFixedInfo, &ulOutBufLen) == NO_ERROR) {		
-			Local<Object> r = Object::New(isolate);
+			Local<Object> r = Nan::New<Object>();
 
-			r->Set(String::NewFromUtf8(isolate, "hostName"), String::NewFromUtf8(isolate, pFixedInfo->HostName));
-			r->Set(String::NewFromUtf8(isolate, "domainName"), String::NewFromUtf8(isolate, pFixedInfo->DomainName));
+			r->Set(Nan::New("hostName").ToLocalChecked(), Nan::New(pFixedInfo->HostName).ToLocalChecked());
+			r->Set(Nan::New("domainName").ToLocalChecked(), Nan::New(pFixedInfo->DomainName).ToLocalChecked());
 			
-			Local<Array> dns = Array::New(isolate);
+			Local<Array> dns = Nan::New<Array>();
 			uint32_t i = 0;
 
-			dns->Set(i++, String::NewFromUtf8(isolate, pFixedInfo->DnsServerList.IpAddress.String));
+			dns->Set(i++, Nan::New(pFixedInfo->DnsServerList.IpAddress.String).ToLocalChecked());
 			pDNS = pFixedInfo->DnsServerList.Next;
 			while (pDNS) {
-				dns->Set(i++, String::NewFromUtf8(isolate, pDNS->IpAddress.String));
+				dns->Set(i++, Nan::New(pDNS->IpAddress.String).ToLocalChecked());
 				pDNS = pDNS->Next;
 			}
-				
-			r->Set(String::NewFromUtf8(isolate, "dnsServers"), dns);
-			r->Set(String::NewFromUtf8(isolate, "dnsEnabled"), Boolean::New(isolate, pFixedInfo->EnableDns != 0));
-			r->Set(String::NewFromUtf8(isolate, "nodeType"), Number::New(isolate, pFixedInfo->NodeType));
-			r->Set(String::NewFromUtf8(isolate, "domain"), String::NewFromUtf8(isolate, pFixedInfo->DomainName));
-			r->Set(String::NewFromUtf8(isolate, "arpProxyEnabled"), Boolean::New(isolate, pFixedInfo->EnableProxy != 0));
-			r->Set(String::NewFromUtf8(isolate, "routingEnabled"), Boolean::New(isolate, pFixedInfo->EnableRouting != 0));
-			r->Set(String::NewFromUtf8(isolate, "dhcpScope"), String::NewFromUtf8(isolate, pFixedInfo->ScopeId));
+
+			r->Set(Nan::New("dnsServers").ToLocalChecked(), dns);
+			r->Set(Nan::New("dnsEnabled").ToLocalChecked(), Nan::New(pFixedInfo->EnableDns != 0));
+			r->Set(Nan::New("nodeType").ToLocalChecked(), Nan::New(pFixedInfo->NodeType));
+			r->Set(Nan::New("domain").ToLocalChecked(), Nan::New(pFixedInfo->DomainName).ToLocalChecked());
+			r->Set(Nan::New("arpProxyEnabled").ToLocalChecked(), Nan::New(pFixedInfo->EnableProxy != 0));
+			r->Set(Nan::New("routingEnabled").ToLocalChecked(), Nan::New(pFixedInfo->EnableRouting != 0));
+			r->Set(Nan::New("dhcpScope").ToLocalChecked(), Nan::New(pFixedInfo->ScopeId).ToLocalChecked());
 
 
 			if (pFixedInfo) FREE(pFixedInfo);
 
-			args.GetReturnValue().Set(r);
+			info.GetReturnValue().Set(r);
 			return;
 		} else {
 			if (pFixedInfo) FREE(pFixedInfo);
-			isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "GetNetworkParams failed with error " + dwRetVal)));
-			args.GetReturnValue().Set(Undefined(isolate));
+			Nan::ThrowTypeError("GetNetworkParams failed with error " + dwRetVal);
+			info.GetReturnValue().Set(Nan::Undefined());
 			return;
 		}
 
 		if (pFixedInfo)
 			FREE(pFixedInfo);
 
-		args.GetReturnValue().Set(Undefined(isolate));
+		info.GetReturnValue().Set(Nan::Undefined());
 		return;
 	}
 
-	void init(v8::Local<v8::Object> target) {
-		NODE_SET_METHOD(target, "getNetworkParams", Get);
+	void init(Local<Object> exports) {
+		exports->Set(Nan::New("getNetworkParams").ToLocalChecked(),
+			Nan::New<FunctionTemplate>(Get)->GetFunction());
 	}
 
 	NODE_MODULE(NodeWinNetInfo, init)
