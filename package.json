@@ -5,7 +5,8 @@
   "os": ["win32"],
   "main": "index.js",
   "scripts": {
-    "preinstall": "node-gyp rebuild"
+    "preinstall": "node-gyp rebuild",
+    "test": "node test"
   },
   "repository": {
     "type": "git",
