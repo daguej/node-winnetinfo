@@ -1,17 +1,10 @@
 // NodeWinNetInfo.cpp : Defines the exported functions for the DLL application.
 //
 
-#include "stdafx.h"
-
-#include <v8.h>
-using namespace v8;
-#pragma comment(lib, "node")
-#include <node.h>
-
+#include <nan.h>
 
 #include <WinSock2.h>
 #include <IPHlpApi.h>
-#include <stdio.h>
 #include <Windows.h>
 #pragma comment(lib, "IPHLPAPI.lib")
 
@@ -21,9 +14,9 @@ using namespace v8;
 
 
 namespace WinNetInfo {
-	Handle<Value> Get(const Arguments &args) {
-		HandleScope scope;
+	using namespace v8;
 
+	void Get(const Nan::FunctionCallbackInfo<Value>& info) {
 		FIXED_INFO *pFixedInfo;
 		ULONG ulOutBufLen;
 		DWORD dwRetVal;
@@ -31,8 +24,9 @@ namespace WinNetInfo {
 
 		pFixedInfo = (FIXED_INFO *) MALLOC(sizeof (FIXED_INFO));
 		if (pFixedInfo == NULL) {
-			ThrowException(Exception::Error(String::New("Error allocating memory")));
-			return scope.Close(Undefined());
+			Nan::ThrowError("Error allocating memory");
+			info.GetReturnValue().Set(Nan::Undefined());
+			return;
 		}
 		ulOutBufLen = sizeof (FIXED_INFO);
 
@@ -42,61 +36,60 @@ namespace WinNetInfo {
 			FREE(pFixedInfo);
 			pFixedInfo = (FIXED_INFO *) MALLOC(ulOutBufLen);
 			if (pFixedInfo == NULL) {
-				ThrowException(Exception::Error(String::New("Error allocating memory")));
-				return scope.Close(Undefined());
+				Nan::ThrowError("Error allocating memory");
+				info.GetReturnValue().Set(Nan::Undefined());
+				return;
 			}
 		}
 
 		
 		if (dwRetVal = GetNetworkParams(pFixedInfo, &ulOutBufLen) == NO_ERROR) {		
-			Local<Object> r = Object::New();
+			Local<Object> r = Nan::New<Object>();
 
-			r->Set(String::NewSymbol("hostName"), String::NewSymbol(pFixedInfo->HostName));
-			r->Set(String::NewSymbol("domainName"), String::NewSymbol(pFixedInfo->DomainName));
+			r->Set(Nan::New("hostName").ToLocalChecked(), Nan::New(pFixedInfo->HostName).ToLocalChecked());
+			r->Set(Nan::New("domainName").ToLocalChecked(), Nan::New(pFixedInfo->DomainName).ToLocalChecked());
 			
-			Local<Array> dns = Array::New();
-			//dns->
+			Local<Array> dns = Nan::New<Array>();
 			uint32_t i = 0;
 
-			dns->Set(i++, String::NewSymbol(pFixedInfo->DnsServerList.IpAddress.String));
+			dns->Set(i++, Nan::New(pFixedInfo->DnsServerList.IpAddress.String).ToLocalChecked());
 			pDNS = pFixedInfo->DnsServerList.Next;
 			while (pDNS) {
-				dns->Set(i++, String::NewSymbol(pDNS->IpAddress.String));
+				dns->Set(i++, Nan::New(pDNS->IpAddress.String).ToLocalChecked());
 				pDNS = pDNS->Next;
 			}
-				
-			r->Set(String::NewSymbol("dnsServers"), dns);
-			r->Set(String::NewSymbol("dnsEnabled"), Boolean::New(pFixedInfo->EnableDns));
-			r->Set(String::NewSymbol("nodeType"), Number::New(pFixedInfo->NodeType));
-			r->Set(String::NewSymbol("domain"), String::NewSymbol(pFixedInfo->DomainName));
-			r->Set(String::NewSymbol("arpProxyEnabled"), Boolean::New(pFixedInfo->EnableProxy));
-			r->Set(String::NewSymbol("routingEnabled"), Boolean::New(pFixedInfo->EnableRouting));
-			r->Set(String::NewSymbol("dhcpScope"), String::NewSymbol(pFixedInfo->ScopeId));
+
+			r->Set(Nan::New("dnsServers").ToLocalChecked(), dns);
+			r->Set(Nan::New("dnsEnabled").ToLocalChecked(), Nan::New(pFixedInfo->EnableDns != 0));
+			r->Set(Nan::New("nodeType").ToLocalChecked(), Nan::New(pFixedInfo->NodeType));
+			r->Set(Nan::New("domain").ToLocalChecked(), Nan::New(pFixedInfo->DomainName).ToLocalChecked());
+			r->Set(Nan::New("arpProxyEnabled").ToLocalChecked(), Nan::New(pFixedInfo->EnableProxy != 0));
+			r->Set(Nan::New("routingEnabled").ToLocalChecked(), Nan::New(pFixedInfo->EnableRouting != 0));
+			r->Set(Nan::New("dhcpScope").ToLocalChecked(), Nan::New(pFixedInfo->ScopeId).ToLocalChecked());
 
 
 			if (pFixedInfo) FREE(pFixedInfo);
-			return scope.Close(r);
 
+			info.GetReturnValue().Set(r);
+			return;
 		} else {
 			if (pFixedInfo) FREE(pFixedInfo);
-			ThrowException(Exception::TypeError(String::New("GetNetworkParams failed with error " + dwRetVal)));
-			return scope.Close(Undefined());
+			Nan::ThrowTypeError("GetNetworkParams failed with error " + dwRetVal);
+			info.GetReturnValue().Set(Nan::Undefined());
+			return;
 		}
 
 		if (pFixedInfo)
 			FREE(pFixedInfo);
 
-		return scope.Close(Undefined());
-
+		info.GetReturnValue().Set(Nan::Undefined());
+		return;
 	}
-}
 
-extern "C" void NODE_EXTERN init (Handle<Object> target)
-{
-	HandleScope scope;
-	Local<FunctionTemplate> get = FunctionTemplate::New(WinNetInfo::Get);
-	
-	target->Set(String::NewSymbol("getNetworkParams"), get->GetFunction());
-}
+	void init(Local<Object> exports) {
+		exports->Set(Nan::New("getNetworkParams").ToLocalChecked(),
+			Nan::New<FunctionTemplate>(Get)->GetFunction());
+	}
 
-NODE_MODULE(NodeWinNetInfo, init)
+	NODE_MODULE(NodeWinNetInfo, init)
+}
