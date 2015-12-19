@@ -1,6 +1,6 @@
 {
   "name": "winnetinfo",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Allows Node to get Windows' DNS configuration",
   "os": ["win32"],
   "main": "index.js",
