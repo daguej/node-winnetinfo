@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Allows Node to get Windows' DNS configuration",
   "os": ["win32"],
+  "engines": {
+    "node": ">=0.11.0"
+  },
   "main": "index.js",
   "scripts": {
     "preinstall": "node-gyp rebuild"

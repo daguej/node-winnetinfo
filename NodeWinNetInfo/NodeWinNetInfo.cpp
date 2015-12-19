@@ -21,8 +21,8 @@ using namespace v8;
 
 
 namespace WinNetInfo {
-	Handle<Value> Get(const Arguments &args) {
-		HandleScope scope;
+	void Get(const FunctionCallbackInfo<Value>& args) {
+		Isolate* isolate = args.GetIsolate();
 
 		FIXED_INFO *pFixedInfo;
 		ULONG ulOutBufLen;
@@ -31,8 +31,9 @@ namespace WinNetInfo {
 
 		pFixedInfo = (FIXED_INFO *) MALLOC(sizeof (FIXED_INFO));
 		if (pFixedInfo == NULL) {
-			ThrowException(Exception::Error(String::New("Error allocating memory")));
-			return scope.Close(Undefined());
+			isolate->ThrowException(Exception::Error(String::NewFromUtf8(isolate, "Error allocating memory")));
+			args.GetReturnValue().Set(Undefined(isolate));
+			return;
 		}
 		ulOutBufLen = sizeof (FIXED_INFO);
 
@@ -42,61 +43,59 @@ namespace WinNetInfo {
 			FREE(pFixedInfo);
 			pFixedInfo = (FIXED_INFO *) MALLOC(ulOutBufLen);
 			if (pFixedInfo == NULL) {
-				ThrowException(Exception::Error(String::New("Error allocating memory")));
-				return scope.Close(Undefined());
+				isolate->ThrowException(Exception::Error(String::NewFromUtf8(isolate, "Error allocating memory")));
+				args.GetReturnValue().Set(Undefined(isolate));
+				return;
 			}
 		}
 
 		
 		if (dwRetVal = GetNetworkParams(pFixedInfo, &ulOutBufLen) == NO_ERROR) {		
-			Local<Object> r = Object::New();
+			Local<Object> r = Object::New(isolate);
 
-			r->Set(String::NewSymbol("hostName"), String::NewSymbol(pFixedInfo->HostName));
-			r->Set(String::NewSymbol("domainName"), String::NewSymbol(pFixedInfo->DomainName));
+			r->Set(String::NewFromUtf8(isolate, "hostName"), String::NewFromUtf8(isolate, pFixedInfo->HostName));
+			r->Set(String::NewFromUtf8(isolate, "domainName"), String::NewFromUtf8(isolate, pFixedInfo->DomainName));
 			
-			Local<Array> dns = Array::New();
-			//dns->
+			Local<Array> dns = Array::New(isolate);
 			uint32_t i = 0;
 
-			dns->Set(i++, String::NewSymbol(pFixedInfo->DnsServerList.IpAddress.String));
+			dns->Set(i++, String::NewFromUtf8(isolate, pFixedInfo->DnsServerList.IpAddress.String));
 			pDNS = pFixedInfo->DnsServerList.Next;
 			while (pDNS) {
-				dns->Set(i++, String::NewSymbol(pDNS->IpAddress.String));
+				dns->Set(i++, String::NewFromUtf8(isolate, pDNS->IpAddress.String));
 				pDNS = pDNS->Next;
 			}
 				
-			r->Set(String::NewSymbol("dnsServers"), dns);
-			r->Set(String::NewSymbol("dnsEnabled"), Boolean::New(pFixedInfo->EnableDns));
-			r->Set(String::NewSymbol("nodeType"), Number::New(pFixedInfo->NodeType));
-			r->Set(String::NewSymbol("domain"), String::NewSymbol(pFixedInfo->DomainName));
-			r->Set(String::NewSymbol("arpProxyEnabled"), Boolean::New(pFixedInfo->EnableProxy));
-			r->Set(String::NewSymbol("routingEnabled"), Boolean::New(pFixedInfo->EnableRouting));
-			r->Set(String::NewSymbol("dhcpScope"), String::NewSymbol(pFixedInfo->ScopeId));
+			r->Set(String::NewFromUtf8(isolate, "dnsServers"), dns);
+			r->Set(String::NewFromUtf8(isolate, "dnsEnabled"), Boolean::New(isolate, pFixedInfo->EnableDns != 0));
+			r->Set(String::NewFromUtf8(isolate, "nodeType"), Number::New(isolate, pFixedInfo->NodeType));
+			r->Set(String::NewFromUtf8(isolate, "domain"), String::NewFromUtf8(isolate, pFixedInfo->DomainName));
+			r->Set(String::NewFromUtf8(isolate, "arpProxyEnabled"), Boolean::New(isolate, pFixedInfo->EnableProxy != 0));
+			r->Set(String::NewFromUtf8(isolate, "routingEnabled"), Boolean::New(isolate, pFixedInfo->EnableRouting != 0));
+			r->Set(String::NewFromUtf8(isolate, "dhcpScope"), String::NewFromUtf8(isolate, pFixedInfo->ScopeId));
 
 
 			if (pFixedInfo) FREE(pFixedInfo);
-			return scope.Close(r);
 
+			args.GetReturnValue().Set(r);
+			return;
 		} else {
 			if (pFixedInfo) FREE(pFixedInfo);
-			ThrowException(Exception::TypeError(String::New("GetNetworkParams failed with error " + dwRetVal)));
-			return scope.Close(Undefined());
+			isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "GetNetworkParams failed with error " + dwRetVal)));
+			args.GetReturnValue().Set(Undefined(isolate));
+			return;
 		}
 
 		if (pFixedInfo)
 			FREE(pFixedInfo);
 
-		return scope.Close(Undefined());
-
+		args.GetReturnValue().Set(Undefined(isolate));
+		return;
 	}
-}
 
-extern "C" void NODE_EXTERN init (Handle<Object> target)
-{
-	HandleScope scope;
-	Local<FunctionTemplate> get = FunctionTemplate::New(WinNetInfo::Get);
-	
-	target->Set(String::NewSymbol("getNetworkParams"), get->GetFunction());
-}
+	void init(v8::Local<v8::Object> target) {
+		NODE_SET_METHOD(target, "getNetworkParams", Get);
+	}
 
-NODE_MODULE(NodeWinNetInfo, init)
+	NODE_MODULE(NodeWinNetInfo, init)
+}
