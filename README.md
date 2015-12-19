@@ -10,8 +10,6 @@ This project is available on npm.  Since it is a native (C++) addon, you'll need
 
     > npm install winnetinfo
 
-Alternatively, you can [download a compiled binary here](https://github.com/downloads/daguej/node-winnetinfo/NodeWinNetInfo.node) if you're in a hurry (and taking candy from strangers is your thing).
-
 Usage
 =====
 1. `var ni = require('winnetinfo');`
